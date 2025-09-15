@@ -5,6 +5,7 @@ androidx-core-version = "1.17.0"
 androidx-lifecycle-version = "2.9.3"
 androidx-appcompat-version = "1.7.1"
 androidx-javascriptengine-version = "1.0.0"
+kotlinx-coroutines-guava-version = "1.6.0"
 
 activity-compose-version = "1.11.0"
 compose-bom-version = "2025.09.00"
@@ -20,6 +21,7 @@ androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = 
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "androidx-lifecycle-version" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "androidx-appcompat-version" }
 androidx-javascriptengine = { group = "androidx.javascriptengine", name = "javascriptengine", version.ref = "androidx-javascriptengine-version" }
+kotlinx-coroutines-guava = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-guava", version.ref = "kotlinx-coroutines-guava-version" }
 
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activity-compose-version" }
 

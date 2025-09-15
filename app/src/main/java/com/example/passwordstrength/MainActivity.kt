@@ -26,6 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -33,6 +34,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
@@ -40,13 +42,18 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import androidx.javascriptengine.JavaScriptSandbox
+import androidx.lifecycle.lifecycleScope
 import com.example.passwordstrength.ui.theme.PasswordStrengthTheme
-import com.google.common.util.concurrent.FutureCallback
-import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.nulabinc.zxcvbn.Zxcvbn
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.guava.await
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.lang.NumberFormatException
 import java.util.concurrent.TimeUnit
 
@@ -76,6 +83,7 @@ class MainActivity : ComponentActivity() {
         JavaScriptSandbox.createConnectedInstanceAsync(this)
     }
 
+    @OptIn(FlowPreview::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -83,6 +91,12 @@ class MainActivity : ComponentActivity() {
             var password by rememberSaveable { mutableStateOf("") }
             var showPassword by remember { mutableStateOf(false) }
             var passwordStrength by rememberSaveable { mutableFloatStateOf(0f) }
+
+            LaunchedEffect(password) {
+                snapshotFlow { password }.debounce(500L).collectLatest { debouncedPassword ->
+                    calculatePasswordStrength(debouncedPassword) { passwordStrength = it.score / 4.0f }
+                }
+            }
 
             PasswordStrengthTheme {
                 PasswordStrengthScreen(
@@ -93,10 +107,7 @@ class MainActivity : ComponentActivity() {
                     password = password,
                     showPassword = showPassword,
                     onShowPasswordClicked = { showPassword = !showPassword },
-                    onPasswordChange = { newPassword ->
-                        password = newPassword
-                        calculatePasswordStrength(newPassword) { passwordStrength = it.score / 4.0f }
-                    },
+                    onPasswordChange = { password = it },
                     passwordStrength = passwordStrength,
                 )
             }
@@ -119,58 +130,48 @@ class MainActivity : ComponentActivity() {
         } else {
             when(passwordStrengthCalculatorToUse) {
                 PasswordStrengthCalculator.ZXCVBN4J -> {
-                    val score = zxcvbn.measure(password).score
-                    val passwordStrength = PasswordStrength.entries.firstOrNull { it.score == score } ?: PasswordStrength.VERY_GUESSABLE
-                    onPasswordStrengthCalculated(passwordStrength)
+                    lifecycleScope.launch {
+                        val passwordStrength: PasswordStrength = withContext(Dispatchers.Default) {
+                            val score = zxcvbn.measure(password).score
+                            passwordStrengthFromScore(score)
+                        }
+                        onPasswordStrengthCalculated(passwordStrength)
+                    }
                 }
                 PasswordStrengthCalculator.ZXCVBNTS_WITH_WEBVIEW -> {
                     val script = zxcvbnTsScript.replace("\$arg1", password)
                     webView.evaluateJavascript(script) { result ->
-                        try {
-                            val score = minOf(result.replace("\"", "").toInt(), 4)
-                            val passwordStrength = PasswordStrength.entries.firstOrNull { it.score == score } ?: PasswordStrength.VERY_GUESSABLE
+                        lifecycleScope.launch {
+                            val passwordStrength: PasswordStrength = withContext(Dispatchers.Default) {
+                                passwordStrengthFromScore(result.replace("\"", ""))
+                            }
                             onPasswordStrengthCalculated(passwordStrength)
-                        } catch (_: NumberFormatException) { /* Ignore NumberFormatException */ }
+                        }
                     }
                 }
                 PasswordStrengthCalculator.ZXCVBNTS_WITH_JAVASCRIPT_ENGINE -> {
-                    val mainExecutor = ContextCompat.getMainExecutor(this)
-                    Futures.addCallback(
-                        jsSandboxFuture,
-                        object : FutureCallback<JavaScriptSandbox> {
-                            override fun onSuccess(jsSandbox: JavaScriptSandbox) {
-                                val script = zxcvbnTsScript.replace("\$arg1", password)
-                                val jsIsolate = jsSandbox.createIsolate()
-                                val resultFuture = jsIsolate.evaluateJavaScriptAsync(script)
-                                Futures.addCallback(
-                                    resultFuture,
-                                    object : FutureCallback<String> {
-                                        override fun onSuccess(result: String) {
-                                            try {
-                                                val score = minOf(result.toInt(), 4)
-                                                val passwordStrength = PasswordStrength.entries.firstOrNull { it.score == score } ?: PasswordStrength.VERY_GUESSABLE
-                                                onPasswordStrengthCalculated(passwordStrength)
-                                            } catch (_: NumberFormatException) { /* Ignore NumberFormatException */ }
-                                        }
-
-                                        override fun onFailure(t: Throwable) {
-                                            // handle failure
-                                        }
-                                    },
-                                    mainExecutor
-                                )
-                            }
-
-                            override fun onFailure(t: Throwable) {
-                                // handle failure
-                            }
-                        },
-                        mainExecutor
-                    )
+                    lifecycleScope.launch {
+                        val passwordStrength: PasswordStrength = withContext(Dispatchers.Default) {
+                            val script = zxcvbnTsScript.replace("\$arg1", password)
+                            val jsSandbox = jsSandboxFuture.await()
+                            val jsIsolate = jsSandbox.createIsolate()
+                            val result = jsIsolate.evaluateJavaScriptAsync(script).await()
+                            passwordStrengthFromScore(result)
+                        }
+                        onPasswordStrengthCalculated(passwordStrength)
+                    }
                 }
             }
         }
     }
+
+    private fun passwordStrengthFromScore(score: String): PasswordStrength = try {
+        passwordStrengthFromScore(score = minOf(score.toInt(), 4))
+    } catch (_: NumberFormatException) {
+        PasswordStrength.VERY_GUESSABLE
+    }
+
+    private fun passwordStrengthFromScore(score: Int): PasswordStrength = PasswordStrength.entries.firstOrNull { it.score == score } ?: PasswordStrength.VERY_GUESSABLE
 
     companion object {
         const val SCRIPT_FILE_NAME = "zxcvbn-ts.js"

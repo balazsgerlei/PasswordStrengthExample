@@ -45,6 +45,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.javascriptengine)
+    implementation(libs.kotlinx.coroutines.guava)
 
     implementation(libs.androidx.activity.compose)
 
