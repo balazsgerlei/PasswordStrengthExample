@@ -2585,5 +2585,6 @@ this.zxcvbnts.core = (function (exports) {
     },
   }
   zxcvbnts.core.zxcvbnOptions.setOptions(options)
-  return zxcvbnts.core.zxcvbn('$arg1').score; 
+  let score = zxcvbnts.core.zxcvbn('$arg1').score
+  return score.toString(); 
 })();

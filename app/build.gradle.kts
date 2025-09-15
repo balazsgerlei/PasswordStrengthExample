@@ -10,7 +10,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.passwordstrength"
-        minSdk = 23
+        minSdk = 26
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
@@ -44,6 +44,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.javascriptengine)
 
     implementation(libs.androidx.activity.compose)
 
