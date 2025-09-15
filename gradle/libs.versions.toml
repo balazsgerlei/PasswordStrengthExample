@@ -5,7 +5,7 @@ androidx-core-version = "1.17.0"
 androidx-lifecycle-version = "2.9.3"
 androidx-appcompat-version = "1.7.1"
 androidx-javascriptengine-version = "1.0.0"
-kotlinx-coroutines-guava-version = "1.6.0"
+kotlinx-coroutines-guava-version = "1.10.2"
 
 activity-compose-version = "1.11.0"
 compose-bom-version = "2025.09.00"
