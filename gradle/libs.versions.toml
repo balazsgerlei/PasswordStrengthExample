@@ -1,0 +1,44 @@
+[versions]
+agp-version = "8.13.0"
+kotlin-version = "2.2.20"
+androidx-core-version = "1.17.0"
+androidx-lifecycle-version = "2.9.3"
+androidx-appcompat-version = "1.7.1"
+
+activity-compose-version = "1.11.0"
+compose-bom-version = "2025.09.00"
+
+zxcvbn4j-version = "1.9.0"
+
+junit-version = "4.13.2"
+androidx-junit-version = "1.3.0"
+espresso-version = "3.7.0"
+
+[libraries]
+androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "androidx-core-version" }
+androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "androidx-lifecycle-version" }
+androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "androidx-appcompat-version" }
+
+androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activity-compose-version" }
+
+androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "compose-bom-version" }
+androidx-compose-ui = { group = "androidx.compose.ui", name = "ui" }
+androidx-compose-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
+androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
+androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
+androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
+androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
+androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
+androidx-compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
+
+zxcvbn4j = { group = "com.nulab-inc", name = "zxcvbn", version.ref = "zxcvbn4j-version" }
+
+junit = { group = "junit", name = "junit", version.ref = "junit-version" }
+androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidx-junit-version" }
+androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espresso-version" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp-version" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin-version" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin-version" }
+
