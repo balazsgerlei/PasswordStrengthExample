@@ -47,6 +47,7 @@ import androidx.lifecycle.lifecycleScope
 import com.example.passwordstrength.ui.theme.PasswordStrengthTheme
 import com.google.common.util.concurrent.ListenableFuture
 import com.nulabinc.zxcvbn.Zxcvbn
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.collectLatest
@@ -82,6 +83,8 @@ class MainActivity : ComponentActivity() {
         jsSandboxCreated = true
         JavaScriptSandbox.createConnectedInstanceAsync(this)
     }
+
+    private val backgroundDispatcher: CoroutineDispatcher = Dispatchers.Default
 
     @OptIn(FlowPreview::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -144,7 +147,7 @@ class MainActivity : ComponentActivity() {
             when(passwordStrengthCalculatorToUse) {
                 PasswordStrengthCalculator.ZXCVBN4J -> {
                     lifecycleScope.launch {
-                        val passwordStrength: PasswordStrength = withContext(Dispatchers.Default) {
+                        val passwordStrength: PasswordStrength = withContext(backgroundDispatcher) {
                             val score = zxcvbn.measure(password).score
                             passwordStrengthFromScore(score)
                         }
@@ -158,12 +161,12 @@ class MainActivity : ComponentActivity() {
                 }
                 PasswordStrengthCalculator.ZXCVBNTS_WITH_WEBVIEW -> {
                     lifecycleScope.launch {
-                        val script = withContext(Dispatchers.Default) {
+                        val script = withContext(backgroundDispatcher) {
                             zxcvbnTsScript.replace("\$arg1", password)
                         }
                         webView.evaluateJavascript(script) { result ->
                             lifecycleScope.launch {
-                                val passwordStrength: PasswordStrength = withContext(Dispatchers.Default) {
+                                val passwordStrength: PasswordStrength = withContext(backgroundDispatcher) {
                                     passwordStrengthFromScore(result.replace("\"", ""))
                                 }
                                 onPasswordStrengthCalculated(
@@ -178,7 +181,7 @@ class MainActivity : ComponentActivity() {
                 }
                 PasswordStrengthCalculator.ZXCVBNTS_WITH_JAVASCRIPT_ENGINE -> {
                     lifecycleScope.launch {
-                        val passwordStrength: PasswordStrength = withContext(Dispatchers.Default) {
+                        val passwordStrength: PasswordStrength = withContext(backgroundDispatcher) {
                             val script = zxcvbnTsScript.replace("\$arg1", password)
                             val jsSandbox = jsSandboxFuture.await()
                             val jsIsolate = jsSandbox.createIsolate()
