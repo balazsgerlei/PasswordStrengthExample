@@ -157,18 +157,22 @@ class MainActivity : ComponentActivity() {
                     }
                 }
                 PasswordStrengthCalculator.ZXCVBNTS_WITH_WEBVIEW -> {
-                    val script = zxcvbnTsScript.replace("\$arg1", password)
-                    webView.evaluateJavascript(script) { result ->
-                        lifecycleScope.launch {
-                            val passwordStrength: PasswordStrength = withContext(Dispatchers.Default) {
-                                passwordStrengthFromScore(result.replace("\"", ""))
-                            }
-                            onPasswordStrengthCalculated(
-                                PasswordStrengthResult(
-                                    passwordStrength,
-                                    calculationTimeMillis = System.currentTimeMillis() - startMillis
+                    lifecycleScope.launch {
+                        val script = withContext(Dispatchers.Default) {
+                            zxcvbnTsScript.replace("\$arg1", password)
+                        }
+                        webView.evaluateJavascript(script) { result ->
+                            lifecycleScope.launch {
+                                val passwordStrength: PasswordStrength = withContext(Dispatchers.Default) {
+                                    passwordStrengthFromScore(result.replace("\"", ""))
+                                }
+                                onPasswordStrengthCalculated(
+                                    PasswordStrengthResult(
+                                        passwordStrength,
+                                        calculationTimeMillis = System.currentTimeMillis() - startMillis
+                                    )
                                 )
-                            )
+                            }
                         }
                     }
                 }
