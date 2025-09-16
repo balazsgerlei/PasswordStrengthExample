@@ -90,11 +90,18 @@ class MainActivity : ComponentActivity() {
         setContent {
             var password by rememberSaveable { mutableStateOf("") }
             var showPassword by remember { mutableStateOf(false) }
-            var passwordStrength by rememberSaveable { mutableFloatStateOf(0f) }
+            var passwordStrength by rememberSaveable {
+                mutableStateOf(
+                    PasswordStrengthResult(
+                        PasswordStrength.TOO_GUESSABLE,
+                        calculationTimeMillis = 0L,
+                    )
+                )
+            }
 
             LaunchedEffect(password) {
                 snapshotFlow { password }.debounce(500L).collectLatest { debouncedPassword ->
-                    calculatePasswordStrength(debouncedPassword) { passwordStrength = it.score / 4.0f }
+                    calculatePasswordStrength(debouncedPassword) { passwordStrength = it }
                 }
             }
 
@@ -102,7 +109,7 @@ class MainActivity : ComponentActivity() {
                 PasswordStrengthScreen(
                     onPasswordCalculatorSelectionChange = { passwordStrengthCalculator ->
                         passwordStrengthCalculatorToUse = passwordStrengthCalculator
-                        calculatePasswordStrength(password) { passwordStrength = it.score / 4.0f }
+                        calculatePasswordStrength(password) { passwordStrength = it }
                     },
                     password = password,
                     showPassword = showPassword,
@@ -123,10 +130,16 @@ class MainActivity : ComponentActivity() {
 
     private fun calculatePasswordStrength(
         password: String,
-        onPasswordStrengthCalculated: (PasswordStrength) -> Unit,
+        onPasswordStrengthCalculated: (PasswordStrengthResult) -> Unit,
     ) {
+        val startMillis = System.currentTimeMillis()
         if (password.isBlank()) {
-            onPasswordStrengthCalculated(PasswordStrength.TOO_GUESSABLE)
+            onPasswordStrengthCalculated(
+                PasswordStrengthResult(
+                    PasswordStrength.TOO_GUESSABLE,
+                    calculationTimeMillis = System.currentTimeMillis() - startMillis
+                )
+            )
         } else {
             when(passwordStrengthCalculatorToUse) {
                 PasswordStrengthCalculator.ZXCVBN4J -> {
@@ -135,7 +148,12 @@ class MainActivity : ComponentActivity() {
                             val score = zxcvbn.measure(password).score
                             passwordStrengthFromScore(score)
                         }
-                        onPasswordStrengthCalculated(passwordStrength)
+                        onPasswordStrengthCalculated(
+                            PasswordStrengthResult(
+                                passwordStrength,
+                                calculationTimeMillis = System.currentTimeMillis() - startMillis
+                            )
+                        )
                     }
                 }
                 PasswordStrengthCalculator.ZXCVBNTS_WITH_WEBVIEW -> {
@@ -145,7 +163,12 @@ class MainActivity : ComponentActivity() {
                             val passwordStrength: PasswordStrength = withContext(Dispatchers.Default) {
                                 passwordStrengthFromScore(result.replace("\"", ""))
                             }
-                            onPasswordStrengthCalculated(passwordStrength)
+                            onPasswordStrengthCalculated(
+                                PasswordStrengthResult(
+                                    passwordStrength,
+                                    calculationTimeMillis = System.currentTimeMillis() - startMillis
+                                )
+                            )
                         }
                     }
                 }
@@ -158,7 +181,12 @@ class MainActivity : ComponentActivity() {
                             val result = jsIsolate.evaluateJavaScriptAsync(script).await()
                             passwordStrengthFromScore(result)
                         }
-                        onPasswordStrengthCalculated(passwordStrength)
+                        onPasswordStrengthCalculated(
+                            PasswordStrengthResult(
+                                passwordStrength,
+                                calculationTimeMillis = System.currentTimeMillis() - startMillis
+                            )
+                        )
                     }
                 }
             }
@@ -195,7 +223,7 @@ fun PasswordStrengthScreen(
     showPassword: Boolean,
     onShowPasswordClicked: () -> Unit,
     onPasswordChange: (String) -> Unit,
-    passwordStrength: Float
+    passwordStrength: PasswordStrengthResult
 ) {
     Scaffold(
         topBar = {
@@ -226,10 +254,14 @@ fun PasswordStrengthScreen(
                     .padding(start = 16.dp, end = 16.dp),
             )
             LinearProgressIndicator(
-                progress = { passwordStrength },
+                progress = { passwordStrength.passwordStrength.score / 4.0f },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 16.dp, end = 16.dp),
+            )
+            Text(
+                "Calculation time: ${passwordStrength.calculationTimeMillis} ms",
+                modifier = Modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp)
             )
         }
     }
@@ -298,18 +330,6 @@ fun PasswordTextField(
 
 @Preview(showBackground = true)
 @Composable
-fun SegmentedButtonRowPreview() {
-    PasswordStrengthTheme {
-        SegmentedButtonRow(
-            items = PasswordStrengthCalculator.entries.toList(),
-            labelProvider = MainActivity.passwordStrengthCalculatorLabelProvider,
-            onSelectionChange = {},
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
 fun PasswordStrengthScreenPreview() {
     PasswordStrengthTheme {
         PasswordStrengthScreen(
@@ -318,7 +338,19 @@ fun PasswordStrengthScreenPreview() {
             showPassword = false,
             onShowPasswordClicked = {},
             onPasswordChange = {},
-            passwordStrength = 0.5f,
+            passwordStrength = PasswordStrengthResult(PasswordStrength.TOO_GUESSABLE, 100L),
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun SegmentedButtonRowPreview() {
+    PasswordStrengthTheme {
+        SegmentedButtonRow(
+            items = PasswordStrengthCalculator.entries.toList(),
+            labelProvider = MainActivity.passwordStrengthCalculatorLabelProvider,
+            onSelectionChange = {},
         )
     }
 }
